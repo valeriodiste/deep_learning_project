@@ -252,9 +252,10 @@ def compute_mean_average_precision_at_k(model_type, queries_dict, docs_dict, k_d
             if print_debug:
                 print(
                     f"Top {k_documents} (predicted) document IDs for query {query_index+1}/{n_queries}:")
-                print(top_k_doc_ids)
-                print(f"Actual relevant document IDs for query {query_id}:")
-                print(relevant_docs)
+                print(f"  {top_k_doc_ids}")
+                print(
+                    f"> Actual relevant document IDs for the query:")
+                print(f"  {relevant_docs}")
 
             # Count how many of the top K retrieved documents are also in the relevant documents
             relevant_count = sum(
@@ -465,9 +466,9 @@ def compute_recall_at_k(model_type, queries_dict, docs_dict, query_id=None, k_do
         if print_debug:
             print(
                 f"Top {k_documents} (predicted) document IDs for query {query_id}:")
-            print(top_k_doc_ids)
-            print(f"Actual relevant document IDs for query {query_id}:")
-            print(relevant_docs)
+            print(f"  {top_k_doc_ids}")
+            print(f"> Actual relevant document IDs for the query:")
+            print(f"  {relevant_docs}")
 
         # Count how many of the top K retrieved documents are also in the relevant documents
         relevant_count = sum(
