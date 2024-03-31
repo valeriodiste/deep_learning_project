@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 import random
 import json
 import os
-import string
+import sys
 from torch.nn import functional
 # Import custom modules
 try:
@@ -280,7 +280,7 @@ class TransformerRetrievalDataset(Dataset):
             force_dataset_rebuild)
 
     def get_dataset(self, force_dataset_rebuild=False):
-        ''' Function to build or retrieve the dataset of <encoded_query, encoded_docid> tuples '''
+        ''' Function to build or retrieve the dataset of <encoded_query, encoded_doc_id> tuples '''
         if not force_dataset_rebuild and self.save_dataset_file_path is not None and os.path.exists(self.save_dataset_file_path):
             print(
                 f"Loading the Transformer Retrieval Dataset from {self.save_dataset_file_path}...")
@@ -431,9 +431,11 @@ class TransformerRetrievalDataset(Dataset):
         if malformed_doc_id and recover_malformed_doc_ids:
             # Check if the final decoded doc id is valid
             if decoded_doc_id not in self.documents.keys():
-                # If the decoded doc id is not valid, get the closest valid doc id
+                max_int_value = sys.maxsize
+                min_int_value = -sys.maxsize - 1
                 closest_doc_id = min(self.documents.keys(), key=lambda doc_id: abs(
-                    int(doc_id) - int(decoded_doc_id)) if len(doc_id) > 0 else float('inf'))
+                    int(doc_id if str.isdigit(doc_id) else max_int_value) -
+                    int(decoded_doc_id if str.isdigit(decoded_doc_id) else min_int_value)))
                 decoded_doc_id = str(closest_doc_id)
         # Return the decoded document ID
         return decoded_doc_id
