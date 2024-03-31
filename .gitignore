@@ -1,0 +1,8 @@
+# Gitignore file, to ignore the __pycache__ folder and also the content of the "src/data" folder in the repository, plus the "lightning_logs" folder
+__pycache__/
+src/data/*
+src/models/*
+src/data_old
+wandb
+dl-dsi-project
+lightning_logs
