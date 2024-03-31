@@ -433,7 +433,7 @@ class TransformerRetrievalDataset(Dataset):
             if decoded_doc_id not in self.documents.keys():
                 # If the decoded doc id is not valid, get the closest valid doc id
                 closest_doc_id = min(self.documents.keys(), key=lambda doc_id: abs(
-                    int(doc_id) - int(decoded_doc_id)))
+                    int(doc_id) - int(decoded_doc_id)) if len(doc_id) > 0 else float('inf'))
                 decoded_doc_id = str(closest_doc_id)
         # Return the decoded document ID
         return decoded_doc_id
