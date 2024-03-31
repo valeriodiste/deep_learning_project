@@ -53,9 +53,9 @@ def train_siamese(siamese_dataset, siamese_model, max_epochs, batch_size, split_
     print("checkpoint_name:", checkpoint_name)
 
     # Initialize a new wandb run
-    if logger is not None:
-        wandb.init(project=logger.experiment.project, name="siamese_network",
-                   config=siamese_model.hparams, reinit=True)
+    # if logger is not None:
+    #     wandb.init(project=logger.experiment.project, name="siamese_network",
+    #                config=siamese_model.hparams, reinit=True)
 
     # Train the model (using the PyTorch Lightning's Trainer)
     trainer = pl.Trainer(
@@ -161,9 +161,9 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
     )
 
     # Initialize a new wandb run for the indexing task
-    if logger is not None:
-        wandb.init(project=logger.experiment.project, name="transformer_" + transformer_model.model_type + "_indexing",
-                   config=transformer_model.hparams, reinit=True)
+    # if logger is not None:
+    #     wandb.init(project=logger.experiment.project, name="transformer_" + transformer_model.model_type + "_indexing",
+    #                config=transformer_model.hparams, reinit=True)
 
     # Set the model to training mode (if not already)
     transformer_model.train()
@@ -209,9 +209,9 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
     transformer_model.reset_scheduled_sampling_probability()
 
     # Initialize a new wandb run for the retrieval task
-    if logger is not None:
-        wandb.init(project=logger.experiment.project, name="transformer_" + transformer_model.model_type + "_retrieval",
-                   config=transformer_model.hparams, reinit=True)
+    # if logger is not None:
+    #     wandb.init(project=logger.experiment.project, name="transformer_" + transformer_model.model_type + "_retrieval",
+    #                config=transformer_model.hparams, reinit=True)
 
     # Train the model (using the PyTorch Lightning's Trainer) for the retrieval task
     print("Training the model for the retrieval task...")
