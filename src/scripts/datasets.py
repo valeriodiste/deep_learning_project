@@ -431,6 +431,7 @@ class TransformerRetrievalDataset(Dataset):
         if malformed_doc_id and recover_malformed_doc_ids:
             # Check if the final decoded doc id is valid
             if decoded_doc_id not in self.documents.keys():
+                # If the decoded doc id is not valid, get the closest valid doc id
                 max_int_value = sys.maxsize
                 min_int_value = -sys.maxsize - 1
                 closest_doc_id = min(self.documents.keys(), key=lambda doc_id: abs(

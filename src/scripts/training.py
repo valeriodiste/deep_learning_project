@@ -52,11 +52,6 @@ def train_siamese(siamese_dataset, siamese_model, max_epochs, batch_size, split_
     print("checkpoint_folder:", checkpoint_folder)
     print("checkpoint_name:", checkpoint_name)
 
-    # Initialize a new wandb run
-    # if logger is not None:
-    #     wandb.init(project=logger.experiment.project, name="siamese_network",
-    #                config=siamese_model.hparams, reinit=True)
-
     # Train the model (using the PyTorch Lightning's Trainer)
     trainer = pl.Trainer(
         # Set the maximum number of epochs
@@ -67,25 +62,18 @@ def train_siamese(siamese_dataset, siamese_model, max_epochs, batch_size, split_
         num_sanity_val_steps=0,
         # Set the logger if provided
         logger=logger,
-        # # Save model checkpoints in the given path
-        # default_root_dir=save_path,
-        # Save model checkpoints in the given path
-        # callbacks=[
-        #     ModelCheckpoint(
-        #         dirpath=checkpoint_folder,
-        #         filename=checkpoint_name
-        #     )
-        # ]
     )
     trainer.fit(siamese_model, train_dataloader, validation_dataloader)
-
-    # Save model checkpoints
-    trainer.save_checkpoint(save_path)
 
     # Get the wandb run ID
     wandb_run_id = None
     if logger is not None:
         wandb_run_id = logger.experiment.id
+        # Finish the current run
+        logger.experiment.finish(quiet=True)
+
+    # Save model checkpoints
+    trainer.save_checkpoint(save_path)
 
     # Return datasets
     return {
@@ -160,11 +148,6 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
         num_workers=DATALOADERS_NUM_WORKERS
     )
 
-    # Initialize a new wandb run for the indexing task
-    # if logger is not None:
-    #     wandb.init(project=logger.experiment.project, name="transformer_" + transformer_model.model_type + "_indexing",
-    #                config=transformer_model.hparams, reinit=True)
-
     # Set the model to training mode (if not already)
     transformer_model.train()
 
@@ -184,16 +167,7 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
         #   are present before starting training (rather than during training itself)
         num_sanity_val_steps=0,
         # Set the logger if provided
-        logger=logger,
-        # # Save model checkpoints in the given path
-        # default_root_dir=save_path,
-        # Save model checkpoints in the given path
-        # callbacks=[
-        #     ModelCheckpoint(
-        #         dirpath=checkpoint_folder,
-        #         filename=checkpoint_name
-        #     )
-        # ]
+        logger=logger[0],
     )
     trainer.fit(transformer_model, indexing_train_dataloader,
                 indexing_validation_dataloader)
@@ -201,17 +175,12 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
     indexing_run_id = None
     if logger is not None:
         # Get the wandb run ID
-        indexing_run_id = logger.experiment.id
+        indexing_run_id = logger[0].experiment.id
         # Finish the current run
-        # logger.experiment.finish()
+        logger[0].experiment.finish(quiet=True)
 
     # Reset the model's schdeduled sampling probability for the retrieval task
     transformer_model.reset_scheduled_sampling_probability()
-
-    # Initialize a new wandb run for the retrieval task
-    # if logger is not None:
-    #     wandb.init(project=logger.experiment.project, name="transformer_" + transformer_model.model_type + "_retrieval",
-    #                config=transformer_model.hparams, reinit=True)
 
     # Train the model (using the PyTorch Lightning's Trainer) for the retrieval task
     print("Training the model for the retrieval task...")
@@ -223,16 +192,7 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
         #   are present before starting training (rather than during training itself)
         num_sanity_val_steps=0,
         # Set the logger if provided
-        logger=logger,
-        # # Save model checkpoints in the given path
-        # default_root_dir=save_path,
-        # Save model checkpoints in the given path
-        # callbacks=[
-        #     ModelCheckpoint(
-        #         dirpath=checkpoint_folder,
-        #         filename=checkpoint_name
-        #     )
-        # ]
+        logger=logger[1]
     )
     trainer.fit(transformer_model, retrieval_train_dataloader,
                 retrieval_validation_dataloader)
@@ -240,9 +200,9 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
     retrieval_run_id = None
     if logger is not None:
         # Get the wandb run ID
-        retrieval_run_id = logger.experiment.id
+        retrieval_run_id = logger[1].experiment.id
         # Finish the current run
-        # logger.experiment.finish()
+        logger[1].experiment.finish(quiet=True)
 
     # Save model checkpoints
     trainer.save_checkpoint(save_path)
