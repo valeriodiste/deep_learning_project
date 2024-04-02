@@ -381,9 +381,9 @@ class TransformerRetrievalDataset(Dataset):
             return doc_id
         max_int_value = sys.maxsize
         min_int_value = -sys.maxsize - 1
-        closest_doc_id = min(other_doc_ids, key=lambda doc_id: abs(
-            int(doc_id if str.isdigit(doc_id) else max_int_value) -
-            int(decoded_doc_id if str.isdigit(decoded_doc_id) else min_int_value)))
+        closest_doc_id = min(other_doc_ids, key=lambda other_doc_id: abs(
+            int(other_doc_id if str.isdigit(other_doc_id) else max_int_value) -
+            int(doc_id if str.isdigit(doc_id) else min_int_value)))
         decoded_doc_id = str(closest_doc_id)
         return decoded_doc_id
 
