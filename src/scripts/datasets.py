@@ -453,6 +453,12 @@ class TransformerRetrievalDataset(Dataset):
         # Return the decoded document ID
         return decoded_doc_id
 
+    def ger_random_doc_ids(self, doc_ids_num, exclude_doc_ids: list = []):
+        ''' Get a list of random document IDs '''
+        doc_ids = list(self.documents.keys())
+        doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
+        return random.sample(doc_ids, doc_ids_num)
+
     def get_similar_doc_ids(self, num_doc_ids=1, target_doc_ids: list = []):
         ''' Get a list of similar document IDs to the given doc IDs '''
         # Get the list of document IDs without the given target document IDs
@@ -461,24 +467,21 @@ class TransformerRetrievalDataset(Dataset):
         # Add the given number of doc ids to the closest doc ids list, iterating over the first num_doc_ids doc ids in the list of doc ids to exclude
         closest_doc_ids = []
         for doc_id in target_doc_ids:
+            doc_ids_to_exclude = target_doc_ids + closest_doc_ids
             closest_doc_ids.append(self.get_closest_doc_id(
-                doc_id, target_doc_ids.extend(closest_doc_ids)))
+                doc_id, exclude_doc_ids=doc_ids_to_exclude))
         # Check if the number of closest doc ids is less than the required number of doc ids
         if len(closest_doc_ids) < num_doc_ids:
-            # Get the remaining doc ids from the list of doc ids
-            remaining_doc_ids = [
-                doc_id for doc_id in doc_ids if doc_id not in closest_doc_ids]
-            # Add random doc ids to the closest doc ids list to reach the required number of doc ids
-            closest_doc_ids.extend(random.sample(
-                remaining_doc_ids, num_doc_ids - len(closest_doc_ids)))
+            # Get random doc ids to complete the list
+            doc_ids_to_exclude = target_doc_ids + closest_doc_ids
+            random_doc_ids = self.ger_random_doc_ids(
+                num_doc_ids - len(closest_doc_ids),
+                exclude_doc_ids=doc_ids_to_exclude)
+            # Add the random doc ids to the closest doc ids list
+            closest_doc_ids.extend(random_doc_ids)
+            closest_doc_ids = closest_doc_ids[:num_doc_ids]
         else:
             # Keep only the required number of doc ids
             closest_doc_ids = closest_doc_ids[:num_doc_ids]
         # Return the list of closest doc ids
         return closest_doc_ids
-
-    def ger_random_doc_ids(self, exclude_doc_ids: list = []):
-        ''' Get a list of random document IDs '''
-        doc_ids = list(self.documents.keys())
-        doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
-        return random.sample(doc_ids, len(doc_ids))
