@@ -514,6 +514,40 @@ class DSITransformer(pl.LightningModule):
         # Define and return optimizer. Example: Adam
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
 
+    # PyTorch Lightning function (optional) called at the very end of each training epoch
+    def on_train_epoch_end(self):
+        # If the validation losses list is NOT empty, return (to avoid logging the training losses twice)
+        if len(self.validation_losses) > 0:
+            return
+        epoch_num = self.current_epoch
+        print()
+        # Log the scheduled sampling probability for this epoch
+        if self.transformer_type == DSITransformer.TRANSFORMER_TYPES.SCHEDULED_SAMPLING_TRANSFORMER:
+            self.log('scheduled_sampling_probability',
+                     self.scheduled_sampling_probability)
+            print(f"Scheduled sampling probability for epoch {epoch_num}: ",
+                  self.scheduled_sampling_probability)
+            # Decrease the scheduled sampling probability
+            self.scheduled_sampling_probability -= self.scheduled_sampling_decay
+            if self.scheduled_sampling_probability < 0.0:
+                self.scheduled_sampling_probability = 0.0
+        # Log the average training loss for this epoch
+        if not len(self.training_losses) == 0:
+            avg_epoch_training_loss = torch.stack(self.training_losses).mean()
+            self.log("avg_epoch_training_loss", avg_epoch_training_loss)
+            print(f"Average training loss for epoch {epoch_num}: ",
+                  avg_epoch_training_loss.item())
+            self.training_losses.clear()
+        # Log the average training accuracy for this epoch
+        if not len(self.training_accuracies) == 0:
+            avg_epoch_training_accuracy = torch.stack(
+                self.training_accuracies).mean()
+            self.log("avg_epoch_training_accuracy",
+                     avg_epoch_training_accuracy)
+            print(f"Average training accuracy for epoch {epoch_num}: ",
+                  avg_epoch_training_accuracy.item())
+            self.training_accuracies.clear()
+
     # Pytorch lightning function (optional) called at the very end of each validation epoch
     def on_validation_epoch_end(self):
         epoch_num = self.current_epoch
