@@ -440,3 +440,12 @@ class TransformerRetrievalDataset(Dataset):
                 decoded_doc_id = str(closest_doc_id)
         # Return the decoded document ID
         return decoded_doc_id
+
+    def get_random_doc_ids(self, num_doc_ids=1, exclude_doc_ids=[]):
+        ''' Get a list of random document IDs from the documents dictionary '''
+        # Get the list of document IDs
+        doc_ids = list(self.documents.keys())
+        # Remove the excluded document IDs
+        doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
+        # Get a random sample of document IDs
+        return random.sample(doc_ids, num_doc_ids)
