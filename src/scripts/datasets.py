@@ -370,6 +370,23 @@ class TransformerRetrievalDataset(Dataset):
         # Return the query ID from the query_ids dictionary (converting all the keys of the dictionary to lists)
         return self.query_ids[str(encoded_query)]
 
+    def get_closest_doc_id(self, doc_id, exclude_doc_ids=[]):
+        ''' Get the closest document ID to the given doc ID '''
+        # Get the closest valid doc ID
+        other_doc_ids = list(self.documents.keys())
+        if exclude_doc_ids and len(exclude_doc_ids) > 0:
+            other_doc_ids = [
+                doc_id for doc_id in other_doc_ids if doc_id not in exclude_doc_ids]
+        if doc_id in other_doc_ids:
+            return doc_id
+        max_int_value = sys.maxsize
+        min_int_value = -sys.maxsize - 1
+        closest_doc_id = min(other_doc_ids, key=lambda doc_id: abs(
+            int(doc_id if str.isdigit(doc_id) else max_int_value) -
+            int(decoded_doc_id if str.isdigit(decoded_doc_id) else min_int_value)))
+        decoded_doc_id = str(closest_doc_id)
+        return decoded_doc_id
+
     def decode_doc_id(self, encoded_doc_id, force_debug_output=False, recover_malformed_doc_ids=True):
         ''' 
         Decode the given encoded document ID into to a string 
@@ -434,23 +451,6 @@ class TransformerRetrievalDataset(Dataset):
                 # If the decoded doc id is not valid, get the closest valid doc id
                 decoded_doc_id = self.get_closest_doc_id(decoded_doc_id)
         # Return the decoded document ID
-        return decoded_doc_id
-
-    def get_closest_doc_id(self, doc_id, exclude_doc_ids=[]):
-        ''' Get the closest document ID to the given doc ID '''
-        # Get the closest valid doc ID
-        other_doc_ids = list(self.documents.keys())
-        if exclude_doc_ids and len(exclude_doc_ids) > 0:
-            other_doc_ids = [
-                doc_id for doc_id in other_doc_ids if doc_id not in exclude_doc_ids]
-        if doc_id in other_doc_ids:
-            return doc_id
-        max_int_value = sys.maxsize
-        min_int_value = -sys.maxsize - 1
-        closest_doc_id = min(other_doc_ids, key=lambda doc_id: abs(
-            int(doc_id if str.isdigit(doc_id) else max_int_value) -
-            int(decoded_doc_id if str.isdigit(decoded_doc_id) else min_int_value)))
-        decoded_doc_id = str(closest_doc_id)
         return decoded_doc_id
 
     def get_similar_doc_ids(self, num_doc_ids=1, exclude_doc_ids: list = []):
