@@ -432,20 +432,48 @@ class TransformerRetrievalDataset(Dataset):
             # Check if the final decoded doc id is valid
             if decoded_doc_id not in self.documents.keys():
                 # If the decoded doc id is not valid, get the closest valid doc id
-                max_int_value = sys.maxsize
-                min_int_value = -sys.maxsize - 1
-                closest_doc_id = min(self.documents.keys(), key=lambda doc_id: abs(
-                    int(doc_id if str.isdigit(doc_id) else max_int_value) -
-                    int(decoded_doc_id if str.isdigit(decoded_doc_id) else min_int_value)))
-                decoded_doc_id = str(closest_doc_id)
+                decoded_doc_id = self.get_closest_doc_id(decoded_doc_id)
         # Return the decoded document ID
         return decoded_doc_id
 
-    def get_random_doc_ids(self, num_doc_ids=1, exclude_doc_ids=[]):
-        ''' Get a list of random document IDs from the documents dictionary '''
-        # Get the list of document IDs
+    def get_closest_doc_id(self, doc_id, exclude_doc_ids=[]):
+        ''' Get the closest document ID to the given doc ID '''
+        # Check if the given doc ID is valid
+        if doc_id in self.documents.keys():
+            return doc_id
+        # Get the closest valid doc ID
+        other_doc_ids = list(self.documents.keys())
+        other_doc_ids.remove(doc_id)
+        if exclude_doc_ids:
+            other_doc_ids = [
+                doc_id for doc_id in other_doc_ids if doc_id not in exclude_doc_ids]
+        max_int_value = sys.maxsize
+        min_int_value = -sys.maxsize - 1
+        closest_doc_id = min(other_doc_ids, key=lambda doc_id: abs(
+            int(doc_id if str.isdigit(doc_id) else max_int_value) -
+            int(decoded_doc_id if str.isdigit(decoded_doc_id) else min_int_value)))
+        decoded_doc_id = str(closest_doc_id)
+        return decoded_doc_id
+
+    def get_similar_doc_ids(self, num_doc_ids=1, exclude_doc_ids: list = []):
+        ''' Get a list of similar document IDs to the given doc IDs '''
+        # Get the list of document IDs without the given document IDs to exclude
         doc_ids = list(self.documents.keys())
-        # Remove the excluded document IDs
         doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
-        # Get a random sample of document IDs
-        return random.sample(doc_ids, num_doc_ids)
+        # Add the given number of doc ids to the closest doc ids list, iterating over the first num_doc_ids doc ids in the list of doc ids to exclude
+        closest_doc_ids = []
+        for doc_id in exclude_doc_ids:
+            closest_doc_ids.append(self.get_closest_doc_id(
+                doc_id, exclude_doc_ids.extend(closest_doc_ids)))
+        closest_doc_ids = closest_doc_ids[:num_doc_ids]
+        # If we still need more doc ids, add the remaining doc ids recursively
+        if len(closest_doc_ids) < num_doc_ids:
+            closest_doc_ids.extend(self.get_similar_doc_ids(
+                num_doc_ids - len(closest_doc_ids), exclude_doc_ids.extend(closest_doc_ids)))
+        return closest_doc_ids
+
+    def ger_random_doc_ids(self, exclude_doc_ids: list = []):
+        ''' Get a list of random document IDs '''
+        doc_ids = list(self.documents.keys())
+        doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
+        return random.sample(doc_ids, len(doc_ids))
