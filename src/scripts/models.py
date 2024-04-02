@@ -624,8 +624,8 @@ class DSITransformer(pl.LightningModule):
                 outputs[-1], descending=True, dim=-1)
             # Get, for each output, the n-th highest probability token (where n depends on the sequence, so that it is 0 for the first of the k sequences, and self.target_tokens-1 for the last of the k sequences)
             min_prob_index = doc_id_max_length - 1 // 2
-            indices = torch.linspace(
-                0, min_prob_index, steps=k, device=encoded_query.device).long().unsqueeze(0)
+            indices = torch.linspace(0, min_prob_index, steps=k,
+                                     device=encoded_query.device).long().unsqueeze(0)
             # Increment/Decrement some of the indices by 1 with a random probability
             indices += torch.randint_like(
                 indices, 0, 2, device=encoded_query.device) * 2 - 1
@@ -649,7 +649,5 @@ class DSITransformer(pl.LightningModule):
         # Refill the list in case of removed duplicates
         top_k_doc_ids = top_k_doc_ids + retrieval_dataset.get_similar_doc_ids(
             k - len(top_k_doc_ids), target_doc_ids=top_k_doc_ids)
-        # top_k_doc_ids = top_k_doc_ids + retrieval_dataset.get_random_doc_ids(
-        #     k - len(top_k_doc_ids), exclude_doc_ids=top_k_doc_ids)
         # Return the top k document IDs
         return top_k_doc_ids
