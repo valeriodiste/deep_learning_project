@@ -438,15 +438,13 @@ class TransformerRetrievalDataset(Dataset):
 
     def get_closest_doc_id(self, doc_id, exclude_doc_ids=[]):
         ''' Get the closest document ID to the given doc ID '''
-        # Check if the given doc ID is valid
-        if doc_id in self.documents.keys():
-            return doc_id
         # Get the closest valid doc ID
         other_doc_ids = list(self.documents.keys())
-        other_doc_ids.remove(doc_id)
-        if exclude_doc_ids:
+        if exclude_doc_ids and len(exclude_doc_ids) > 0:
             other_doc_ids = [
                 doc_id for doc_id in other_doc_ids if doc_id not in exclude_doc_ids]
+        if doc_id in other_doc_ids:
+            return doc_id
         max_int_value = sys.maxsize
         min_int_value = -sys.maxsize - 1
         closest_doc_id = min(other_doc_ids, key=lambda doc_id: abs(
