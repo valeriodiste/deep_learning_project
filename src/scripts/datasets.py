@@ -453,22 +453,28 @@ class TransformerRetrievalDataset(Dataset):
         # Return the decoded document ID
         return decoded_doc_id
 
-    def get_similar_doc_ids(self, num_doc_ids=1, exclude_doc_ids: list = []):
+    def get_similar_doc_ids(self, num_doc_ids=1, target_doc_ids: list = []):
         ''' Get a list of similar document IDs to the given doc IDs '''
-        # Get the list of document IDs without the given document IDs to exclude
+        # Get the list of document IDs without the given target document IDs
         doc_ids = list(self.documents.keys())
-        doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
+        doc_ids = [doc_id for doc_id in doc_ids if doc_id not in target_doc_ids]
         # Add the given number of doc ids to the closest doc ids list, iterating over the first num_doc_ids doc ids in the list of doc ids to exclude
         closest_doc_ids = []
-        for doc_id in exclude_doc_ids:
+        for doc_id in target_doc_ids:
             closest_doc_ids.append(self.get_closest_doc_id(
-                doc_id, exclude_doc_ids.extend(closest_doc_ids)))
-        closest_doc_ids = closest_doc_ids[:num_doc_ids]
-        # If we still need more doc ids, add the remaining doc ids recursively
+                doc_id, target_doc_ids.extend(closest_doc_ids)))
+        # Check if the number of closest doc ids is less than the required number of doc ids
         if len(closest_doc_ids) < num_doc_ids:
-            other_similar_doc_ids = self.get_similar_doc_ids(
-                num_doc_ids - len(closest_doc_ids), exclude_doc_ids.extend(closest_doc_ids))
-            closest_doc_ids.extend(other_similar_doc_ids)
+            # Get the remaining doc ids from the list of doc ids
+            remaining_doc_ids = [
+                doc_id for doc_id in doc_ids if doc_id not in closest_doc_ids]
+            # Add random doc ids to the closest doc ids list to reach the required number of doc ids
+            closest_doc_ids.extend(random.sample(
+                remaining_doc_ids, num_doc_ids - len(closest_doc_ids)))
+        else:
+            # Keep only the required number of doc ids
+            closest_doc_ids = closest_doc_ids[:num_doc_ids]
+        # Return the list of closest doc ids
         return closest_doc_ids
 
     def ger_random_doc_ids(self, exclude_doc_ids: list = []):
