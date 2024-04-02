@@ -466,8 +466,9 @@ class TransformerRetrievalDataset(Dataset):
         closest_doc_ids = closest_doc_ids[:num_doc_ids]
         # If we still need more doc ids, add the remaining doc ids recursively
         if len(closest_doc_ids) < num_doc_ids:
-            closest_doc_ids.extend(self.get_similar_doc_ids(
-                num_doc_ids - len(closest_doc_ids), exclude_doc_ids.extend(closest_doc_ids)))
+            other_similar_doc_ids = self.get_similar_doc_ids(
+                num_doc_ids - len(closest_doc_ids), exclude_doc_ids.extend(closest_doc_ids))
+            closest_doc_ids.extend(other_similar_doc_ids)
         return closest_doc_ids
 
     def ger_random_doc_ids(self, exclude_doc_ids: list = []):
