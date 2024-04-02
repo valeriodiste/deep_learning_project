@@ -648,7 +648,7 @@ class DSITransformer(pl.LightningModule):
         top_k_doc_ids = list(set(top_k_doc_ids))
         # Refill the list in case of removed duplicates
         top_k_doc_ids.append(retrieval_dataset.get_similar_doc_ids(
-            k - len(top_k_doc_ids), exclude_doc_ids=top_k_doc_ids))
+            k - len(top_k_doc_ids), target_doc_ids=top_k_doc_ids))
         # top_k_doc_ids.append(retrieval_dataset.get_random_doc_ids(
         #     k - len(top_k_doc_ids), exclude_doc_ids=top_k_doc_ids))
         # Return the top k document IDs
