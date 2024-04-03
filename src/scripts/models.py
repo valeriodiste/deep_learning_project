@@ -631,7 +631,7 @@ class DSITransformer(pl.LightningModule):
             # Increment/Decrement some of the indices by +X or -X with a random probability
             increment = 2
             indices += torch.randint_like(
-                indices, -increment, +increment, device=encoded_query.device)
+                indices, -increment, +increment+1, device=encoded_query.device)
             # Clamp the indices to be within the range [0, doc_id_max_length-1]
             indices = torch.clamp(indices, 0, doc_id_max_length - 1)
             # Get the tokens to append to the each of the k sequences
