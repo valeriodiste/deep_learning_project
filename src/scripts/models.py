@@ -430,9 +430,9 @@ class DSITransformer(pl.LightningModule):
         input = input.transpose(0, 1)
         target = target.transpose(0, 1)
         # Ground truth target (excluding the last token, i.e. the end token)
-        target_in_true = target[:-1, :]
+        # target_in_true = target[:-1, :]
         # Compute the true output of the model (excluding the first token, i.e. the start token)
-        output_true = self(input, target_in_true)
+        # output_true = self(input, target_in_true)
         # Initialize the output tensor
         output = torch.zeros(target.size(0) - 1, input.size(1),
                              self.target_tokens, device=input.device)
@@ -451,7 +451,9 @@ class DSITransformer(pl.LightningModule):
             # Use scheduled sampling to avoid exposure bias
             if not force_autoregression and use_teacher_forcing:
                 # Use the ground truth token for the next prediction
-                ground_truth_token = output_true[i-1:i, :, :]
+                # ground_truth_token = output_true[i-1:i, :, :]
+                ground_truth_output = self(input, target[:i, :])
+                ground_truth_token = ground_truth_output[i-1:i, :, :]
                 output[i - 1] = ground_truth_token.squeeze(0)
                 next_token = torch.argmax(ground_truth_token, dim=-1)
             else:
@@ -488,11 +490,8 @@ class DSITransformer(pl.LightningModule):
         # Training step for the model (compute the loss and accuracy)
         loss, accuracy = self._step(batch)
         # Append the loss to the training losses list (for logging)
-        # self.log('train_loss', loss, on_epoch=True, prog_bar=True)
         self.training_accuracies.append(accuracy)
         # Append the accuracy to the training accuracies list (for logging)
-        # self.log('train_accuracy', accuracy.item(),
-        #          on_epoch=True, prog_bar=True)
         self.training_losses.append(loss)
         # Return the loss
         return loss
@@ -501,10 +500,8 @@ class DSITransformer(pl.LightningModule):
         # Validation step for the model (compute the loss and accuracy)
         loss, accuracy = self._step(batch, True)
         # Append the loss to the validation losses list (for logging)
-        # self.log('val_loss', loss, on_epoch=True, prog_bar=True)
         self.validation_losses.append(loss)
         # Append the accuracy to the validation accuracies list (for logging)
-        # self.log('val_accuracy', accuracy.item(), on_epoch=True, prog_bar=True)
         self.validation_accuracies.append(accuracy)
         # Return the loss
         return loss
