@@ -436,7 +436,7 @@ class DSITransformer(pl.LightningModule):
         # Initialize the output tensor
         output = torch.zeros(target.size(0) - 1, input.size(1),
                              self.target_tokens, device=input.device)
-        # Start with the first token
+        # Start with the first token (start token)
         target_in = target[:1, :]
         # Iterate over the target sequence to generate the output sequence
         for i in range(1, target.size(0)):
@@ -452,15 +452,20 @@ class DSITransformer(pl.LightningModule):
             if not force_autoregression and use_teacher_forcing:
                 # Use the ground truth token for the next prediction
                 # ground_truth_token = output_true[i-1:i, :, :]
+                # Get the ground truth output starting from the input and the actual target sequence (teacher forcing approach)
                 ground_truth_output = self(input, target[:i, :])
+                # Get the ground truth token for the current position "i" in the target sequence
                 ground_truth_token = ground_truth_output[i-1:i, :, :]
+                # Append the ground truth token to the output tensor
                 output[i - 1] = ground_truth_token.squeeze(0)
+                # Use the ground truth token as the next token
                 next_token = torch.argmax(ground_truth_token, dim=-1)
             else:
-                # Generate the output for the input and target sequences (autoregressive approach)
+                # Generate the output using the input and the target sequences (autoregressive approach)
                 output_till_now = self(input, target_in)
-                # Get the prediction for the last token and append it to the output tensor
+                # Get the prediction for the last token
                 last_token_output = output_till_now[-1, :, :].unsqueeze(0)
+                # Append the last token prediction to the output tensor
                 output[i - 1] = last_token_output.squeeze(0)
                 # Use the last generated best token as the next token of the target_in sequence
                 next_token = torch.argmax(last_token_output, dim=-1)
@@ -623,9 +628,10 @@ class DSITransformer(pl.LightningModule):
             min_prob_index = doc_id_max_length - 1 // 2
             indices = torch.linspace(0, min_prob_index, steps=k,
                                      device=encoded_query.device).long().unsqueeze(0)
-            # Increment/Decrement some of the indices by 1 with a random probability
+            # Increment/Decrement some of the indices by +X or -X with a random probability
+            increment = 2
             indices += torch.randint_like(
-                indices, 0, 2, device=encoded_query.device) * 2 - 1
+                indices, -increment, +increment, device=encoded_query.device)
             # Clamp the indices to be within the range [0, doc_id_max_length-1]
             indices = torch.clamp(indices, 0, doc_id_max_length - 1)
             # Get the tokens to append to the each of the k sequences
