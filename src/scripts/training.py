@@ -62,6 +62,8 @@ def train_siamese(siamese_dataset, siamese_model, max_epochs, batch_size, split_
         num_sanity_val_steps=0,
         # Set the logger if provided
         logger=logger,
+        # Disable checkpointing (to save disk space, checkpoints are saved after training is completed)
+        enable_checkpointing=False
     )
     trainer.fit(siamese_model, train_dataloader, validation_dataloader)
 
@@ -168,6 +170,8 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
         num_sanity_val_steps=0,
         # Set the logger if provided
         logger=logger[0],
+        # Disable checkpointing (to save disk space, checkpoints are saved after training is completed)
+        enable_checkpointing=False
     )
     trainer.fit(transformer_model, indexing_train_dataloader,
                 indexing_validation_dataloader)
@@ -192,7 +196,9 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
         #   are present before starting training (rather than during training itself)
         num_sanity_val_steps=0,
         # Set the logger if provided
-        logger=logger[1]
+        logger=logger[1],
+        # Disable checkpointing (to save disk space, checkpoints are saved after training is completed)
+        enable_checkpointing=False
     )
     trainer.fit(transformer_model, retrieval_train_dataloader,
                 retrieval_validation_dataloader)
