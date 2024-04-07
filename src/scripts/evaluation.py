@@ -303,6 +303,11 @@ def compute_recall_at_k(model_type, queries_dict, docs_dict, query_id=None, k_do
         }
     '''
 
+    # Initialize random seed
+    np.random.seed(RANDOM_SEED)
+    torch.manual_seed(RANDOM_SEED)
+    random.seed(RANDOM_SEED)
+
     # If the query ID is not specified, select a random query (if the model is a DSI Transformer model, the query ID is aways randomly selected from the test set)
     if query_id is None and model_type != MODEL_TYPES.DSI_TRANSFORMER:
         query_id = random.choice(list(queries_dict.keys()))

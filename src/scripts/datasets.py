@@ -445,16 +445,25 @@ class TransformerRetrievalDataset(Dataset):
         decoded_doc_id = "".join(
             [str(token) for token in encoded_doc_id])
         # Recover the malformed doc id if needed
-        if malformed_doc_id and recover_malformed_doc_ids:
+        non_existent_doc_id = decoded_doc_id not in self.documents.keys()
+        if (malformed_doc_id or non_existent_doc_id) and recover_malformed_doc_ids:
             # Check if the final decoded doc id is valid
-            if decoded_doc_id not in self.documents.keys():
-                # If the decoded doc id is not valid, get the closest valid doc id
-                decoded_doc_id = self.get_closest_doc_id(decoded_doc_id)
+            max_doc_id_length = self.doc_id_max_length - 2
+            if non_existent_doc_id:
+                # Decoded doc id is not valid, try to recover it
+                if len(decoded_doc_id) < max_doc_id_length:
+                    # Get the closest valid doc id
+                    decoded_doc_id = self.get_closest_doc_id(decoded_doc_id)
+                else:
+                    # Truncate the decoded doc id to the actual maximum doc id length - 1
+                    decoded_doc_id = decoded_doc_id[:max_doc_id_length-1]
+                    decoded_doc_id = self.get_closest_doc_id(decoded_doc_id)
         # Return the decoded document ID
         return decoded_doc_id
 
     def ger_random_doc_ids(self, doc_ids_num, exclude_doc_ids: list = []):
         ''' Get a list of random document IDs '''
+        random.seed(RANDOM_SEED)
         doc_ids = list(self.documents.keys())
         doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
         return random.sample(doc_ids, doc_ids_num)

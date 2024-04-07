@@ -603,6 +603,8 @@ class DSITransformer(pl.LightningModule):
 
     def generate_top_k_doc_ids(self, encoded_query: torch.Tensor, k: int, retrieval_dataset: datasets.TransformerRetrievalDataset):
         ''' Generate the top K document IDs for the given encoded query '''
+        # Initialize random seed for reproducibility
+        torch.manual_seed(RANDOM_SEED)
         # Special tokens of the document IDs encoding
         doc_id_start_token = retrieval_dataset.doc_id_start_token
         doc_id_end_token = retrieval_dataset.doc_id_end_token

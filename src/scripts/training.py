@@ -85,7 +85,7 @@ def train_siamese(siamese_dataset, siamese_model, max_epochs, batch_size, split_
     }
 
 
-def train_transformer(transformer_indexing_dataset, transformer_retrieval_dataset, transformer_model: pl.LightningModule, max_epochs_list: list[int, int], batch_size, indexing_split_ratios: tuple[float, float], retrieval_split_ratios: tuple[float, float, float], logger: WandbLogger, save_path: str):
+def train_transformer(transformer_indexing_dataset, transformer_retrieval_dataset, transformer_model: pl.LightningModule, max_epochs_list: list[int, int], batch_size, indexing_split_ratios: tuple[float, float], retrieval_split_ratios: tuple[float, float, float], logger: WandbLogger, save_path: str, train_retrieval: bool = True):
     '''
     Train the transformer model for the indexing and retrieval tasks.
 
@@ -187,24 +187,25 @@ def train_transformer(transformer_indexing_dataset, transformer_retrieval_datase
     transformer_model.reset_scheduled_sampling_probability()
 
     # Train the model (using the PyTorch Lightning's Trainer) for the retrieval task
-    print("Training the model for the retrieval task...")
-    trainer = pl.Trainer(
-        # Set the maximum number of epochs
-        max_epochs=max_epochs_list[1],
-        # Avoids executing a validation sanity check at the beginning of the training (to speed up the training process)
-        #   NOTE: this has no effect on the training, as this check is only used to verify if errors on the validation set
-        #   are present before starting training (rather than during training itself)
-        num_sanity_val_steps=0,
-        # Set the logger if provided
-        logger=logger[1],
-        # Disable checkpointing (to save disk space, checkpoints are saved after training is completed)
-        enable_checkpointing=False
-    )
-    trainer.fit(transformer_model, retrieval_train_dataloader,
-                retrieval_validation_dataloader)
-    print("Trained the model for the retrieval task.")
+    if train_retrieval:
+        print("Training the model for the retrieval task...")
+        trainer = pl.Trainer(
+            # Set the maximum number of epochs
+            max_epochs=max_epochs_list[1],
+            # Avoids executing a validation sanity check at the beginning of the training (to speed up the training process)
+            #   NOTE: this has no effect on the training, as this check is only used to verify if errors on the validation set
+            #   are present before starting training (rather than during training itself)
+            num_sanity_val_steps=0,
+            # Set the logger if provided
+            logger=logger[1],
+            # Disable checkpointing (to save disk space, checkpoints are saved after training is completed)
+            enable_checkpointing=False
+        )
+        trainer.fit(transformer_model, retrieval_train_dataloader,
+                    retrieval_validation_dataloader)
+        print("Trained the model for the retrieval task.")
     retrieval_run_id = None
-    if logger is not None:
+    if logger is not None and train_retrieval:
         # Get the wandb run ID
         retrieval_run_id = logger[1].experiment.id
         # Finish the current run
