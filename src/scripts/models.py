@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import Transformer
+from torch.nn import functional
 # Import PyTorch Lightning
 import pytorch_lightning as pl
 # Import other modules
@@ -30,7 +31,7 @@ random.seed(RANDOM_SEED)
 
 class Word2VecModel():
 
-    ''' 
+    '''
     Class for the Word2Vec Neural Network model (using the Gensim library).
 
     For more details: https://radimrehurek.com/gensim/models/word2vec.html
@@ -329,7 +330,7 @@ class DSITransformer(pl.LightningModule):
         - learning_rate: float, the learning rate of the optimizer
         - batch_size: int, the batch size
         - transformer_type: DSITransformer.TRANSFORMER_TYPES, the type of the Transformer model (scheduled sampling, autoregressive, or teacher forcing)
-        - scheduled_sampling_decay: float (optional), the linear decay of the scheduled sampling probability when a scheduled sampling transformed is used (default is 0.05) 
+        - scheduled_sampling_decay: float (optional), the linear decay of the scheduled sampling probability when a scheduled sampling transformed is used (default is 0.05)
 
         For more details: https://pytorch.org/tutorials/beginner/transformer_tutorial.html
         '''
@@ -419,8 +420,8 @@ class DSITransformer(pl.LightningModule):
 
     # Auxiliary function for both the training and valdiation steps (to compute the loss and accuracy)
     def _step(self, batch, force_autoregression=False):
-        ''' 
-        Generate the output document ID using an autoregressive approach (i.e. generate the sequence token by token using the model's own predictions) 
+        '''
+        Generate the output document ID using an autoregressive approach (i.e. generate the sequence token by token using the model's own predictions)
 
         Returns the loss and accuracy of the model for the given batch
         '''
@@ -609,50 +610,65 @@ class DSITransformer(pl.LightningModule):
         doc_id_start_token = retrieval_dataset.doc_id_start_token
         doc_id_end_token = retrieval_dataset.doc_id_end_token
         doc_id_padding_token = retrieval_dataset.doc_id_padding_token
+        doc_id_skip_token = -1
         # Max length of the document IDs
         doc_id_max_length = retrieval_dataset.doc_id_max_length
-        # Repeat the query encoding for each of the k document IDs (to compute the k predictions in parallel)
-        source_sequence = encoded_query.unsqueeze(1).repeat(1, k)
-        # Initialize target sequence (document ID) as a tensor of the defined document ID size containing only the start token
-        target_sequences = torch.full((1, k), doc_id_start_token,
-                                      dtype=torch.long, device=encoded_query.device)
-        # Initialize a tensor to store the top k sequences
-        top_k_doc_ids_tokens = torch.zeros(doc_id_max_length, k,
-                                           dtype=torch.long, device=encoded_query.device)
+        # Initialize target sequence (document ID) as a tensor containing only the start token
+        target_sequences = torch.tensor([[doc_id_start_token]],
+                                        dtype=torch.long, device=encoded_query.device)
         # Iterate over the maximum length of the sequences (i.e. the number of tokens to generate for each document IDs)
         for i in range(doc_id_max_length):
-            # Get the next tokens weights and sequences predictions from the transformer model
-            outputs = self(source_sequence, target_sequences)
+            # Source sequence (query encoding) for the transformer model
+            source_sequence = encoded_query.unsqueeze(
+                1).t().repeat(target_sequences.size(0), 1).t()
+            # Get the next tokens logits (no softmax used for the model's output) from the transformer model (list of N floats, with N being the number of possible target tokens, hence the 10 possible digits of document IDs)
+            outputs = self(source_sequence, target_sequences.t())
             # Get the next token to append to each sequence (i.e. the token with the highest probability for each of the k sequences)
-            sorted_outputs, sorted_indices = torch.sort(
+            sorted_logits, sorted_indices = torch.sort(
                 outputs[-1], descending=True, dim=-1)
-            # Get, for each output, the n-th highest probability token (where n depends on the sequence, so that it is 0 for the first of the k sequences, and self.target_tokens-1 for the last of the k sequences)
-            min_prob_index = doc_id_max_length - 1 // 2
-            indices = torch.linspace(0, min_prob_index, steps=k,
-                                     device=encoded_query.device).long().unsqueeze(0)
-            # Increment/Decrement some of the indices by +X or -X with a random probability
-            increment = 2
-            indices += torch.randint_like(
-                indices, -increment, +increment+1, device=encoded_query.device)
-            # Clamp the indices to be within the range [0, doc_id_max_length-1]
-            indices = torch.clamp(indices, 0, doc_id_max_length - 1)
-            # Get the tokens to append to the each of the k sequences
-            tokens_to_append = sorted_indices.gather(1, indices).squeeze()
-            # Append the selected tokens to the input sequence
-            top_k_doc_ids_tokens[i] = tokens_to_append
-            # Update the target sequence with the new tokens
+            # Transform the logits into probabilities using the softmax function
+            probabilities = functional.softmax(sorted_logits, dim=-1)
+            # Replace tokens with a probability lower than a threshold with a special token (doc_id_skip_token), and keep only the top n tokens
+            max_tokens_to_keep = max(1, (4 - i*2) + int(math.log10(k)))
+            probability_threshold = 1.0 / self.target_tokens
+            # Check if all the tokens have a probability lower than the threshold
+            if torch.all(probabilities < probability_threshold):
+                # If all the filtered indices are the doc_id_skip_token, keep only the top n tokens
+                filtered_indices = sorted_indices[:, 0: max_tokens_to_keep]
+            else:
+                # Filter out the tokens with a probability lower than the threshold and keep only the top n tokens
+                filtered_indices = sorted_indices.masked_fill(
+                    probabilities < probability_threshold, doc_id_skip_token)[:, 0: max_tokens_to_keep]
+            # Repeat the target sequences to match the number of sequences in the sorted indices tensor
+            target_sequences = target_sequences.repeat(
+                1, filtered_indices.size(1)).view(-1, target_sequences.size(1))
+            # Reshape the sorted indices tensor to match the shape of the target sequences tensor
+            filtered_indices = filtered_indices.flatten().unsqueeze(0).t()
+            # Concatenate the target sequences with the sorted indices to create the new target sequences
             target_sequences = torch.cat(
-                (target_sequences, tokens_to_append.unsqueeze(0)), dim=0)
+                (target_sequences, filtered_indices), dim=1)
+            # Remove all sequences that have the doc_id_skip_token as the last token
+            target_sequences = target_sequences[target_sequences[:, -1]
+                                                != doc_id_skip_token]
+        top_k_doc_ids_tokens = target_sequences.tolist()[0: k]
+        # raise ValueError("Stop here for debugging purposes...")
         # Convert the top k sequences of document IDs' tokens to a list of k document IDs
         top_k_doc_ids = []
-        for i in range(k):
-            doc_id_tokens = top_k_doc_ids_tokens[:, i].tolist()
+        for i in range(min(k, len(top_k_doc_ids_tokens))):
+            # doc_id_tokens = top_k_doc_ids_tokens[:, i].tolist()
+            doc_id_tokens = top_k_doc_ids_tokens[i]
             doc_id = retrieval_dataset.decode_doc_id(doc_id_tokens)
             top_k_doc_ids.append(doc_id)
         # Remove duplicate document IDs
         top_k_doc_ids = list(set(top_k_doc_ids))
-        # Refill the list in case of removed duplicates
-        top_k_doc_ids = top_k_doc_ids + retrieval_dataset.get_similar_doc_ids(
+        # Refill the list to have k document IDs
+        use_debug_form_for_refilled_doc_ids = False
+        doc_ids_to_add = retrieval_dataset.get_similar_doc_ids(
             k - len(top_k_doc_ids), target_doc_ids=top_k_doc_ids)
+        if use_debug_form_for_refilled_doc_ids:
+            top_k_doc_ids = top_k_doc_ids + \
+                ["R=" + doc_id for doc_id in doc_ids_to_add]
+        else:
+            top_k_doc_ids = top_k_doc_ids + doc_ids_to_add
         # Return the top k document IDs
         return top_k_doc_ids

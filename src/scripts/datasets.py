@@ -425,10 +425,10 @@ class TransformerRetrievalDataset(Dataset):
                 self.doc_id_padding_token: 'P'
             }
             doc_id_start = ""
-            if malformed_doc_id and not recover_malformed_doc_ids:
-                doc_id_start = "M="
-            elif force_debug_output:
+            if force_debug_output:
                 doc_id_start = "D="
+            elif malformed_doc_id and not recover_malformed_doc_ids:
+                doc_id_start = "M="
             converted_encoded_doc_id = [doc_id_start]
             for token in encoded_doc_id:
                 if int(token) in special_tokens_mappings.keys():
@@ -445,19 +445,22 @@ class TransformerRetrievalDataset(Dataset):
         decoded_doc_id = "".join(
             [str(token) for token in encoded_doc_id])
         # Recover the malformed doc id if needed
-        non_existent_doc_id = decoded_doc_id not in self.documents.keys()
-        if (malformed_doc_id or non_existent_doc_id) and recover_malformed_doc_ids:
-            # Check if the final decoded doc id is valid
-            max_doc_id_length = self.doc_id_max_length - 2
-            if non_existent_doc_id:
-                # Decoded doc id is not valid, try to recover it
-                if len(decoded_doc_id) < max_doc_id_length:
-                    # Get the closest valid doc id
-                    decoded_doc_id = self.get_closest_doc_id(decoded_doc_id)
-                else:
-                    # Truncate the decoded doc id to the actual maximum doc id length - 1
-                    decoded_doc_id = decoded_doc_id[:max_doc_id_length-1]
-                    decoded_doc_id = self.get_closest_doc_id(decoded_doc_id)
+        if not force_debug_output:
+            non_existent_doc_id = decoded_doc_id not in self.documents.keys()
+            if (malformed_doc_id or non_existent_doc_id) and recover_malformed_doc_ids:
+                # Check if the final decoded doc id is valid
+                max_doc_id_length = self.doc_id_max_length - 2
+                if non_existent_doc_id:
+                    # Decoded doc id is not valid, try to recover it
+                    if len(decoded_doc_id) < max_doc_id_length:
+                        # Get the closest valid doc id
+                        decoded_doc_id = self.get_closest_doc_id(
+                            decoded_doc_id)
+                    else:
+                        # Truncate the decoded doc id to the actual maximum doc id length - 1
+                        decoded_doc_id = decoded_doc_id[:max_doc_id_length-1]
+                        decoded_doc_id = self.get_closest_doc_id(
+                            decoded_doc_id)
         # Return the decoded document ID
         return decoded_doc_id
 
@@ -468,29 +471,44 @@ class TransformerRetrievalDataset(Dataset):
         doc_ids = [doc_id for doc_id in doc_ids if doc_id not in exclude_doc_ids]
         return random.sample(doc_ids, doc_ids_num)
 
-    def get_similar_doc_ids(self, num_doc_ids=1, target_doc_ids: list = []):
+    def get_similar_doc_ids(self, num_doc_ids=1, target_doc_ids: list = [], use_closest_doc_ids=False):
         ''' Get a list of similar document IDs to the given doc IDs '''
         # Get the list of document IDs without the given target document IDs
         doc_ids = list(self.documents.keys())
         doc_ids = [doc_id for doc_id in doc_ids if doc_id not in target_doc_ids]
         # Add the given number of doc ids to the closest doc ids list, iterating over the first num_doc_ids doc ids in the list of doc ids to exclude
-        closest_doc_ids = []
-        for doc_id in target_doc_ids:
-            doc_ids_to_exclude = target_doc_ids + closest_doc_ids
-            closest_doc_ids.append(self.get_closest_doc_id(
-                doc_id, exclude_doc_ids=doc_ids_to_exclude))
+        similar_doc_ids = []
+        if use_closest_doc_ids:
+            for doc_id in target_doc_ids:
+                doc_ids_to_exclude = target_doc_ids + similar_doc_ids
+                similar_doc_ids.append(self.get_closest_doc_id(
+                    doc_id, exclude_doc_ids=doc_ids_to_exclude))
+        else:
+            for doc_id in target_doc_ids:
+                # Increment one of the digits of the number by +-1 at random
+                random.seed(RANDOM_SEED)
+                doc_id = list(doc_id)
+                digit_index = random.randint(1, len(doc_id) - 1)
+                digit = doc_id[digit_index % len(doc_id)]
+                # Increment the digit by 1 or -1
+                increment = random.choice([-1, 1])
+                new_digit = (int(digit) + increment) % 10
+                doc_id[digit_index] = str(new_digit)
+                similar_doc_ids.append("".join(doc_id))
+        # Remove duplicates from the list of similar doc ids
+        similar_doc_ids = list(set(similar_doc_ids))
         # Check if the number of closest doc ids is less than the required number of doc ids
-        if len(closest_doc_ids) < num_doc_ids:
+        if len(similar_doc_ids) < num_doc_ids:
             # Get random doc ids to complete the list
-            doc_ids_to_exclude = target_doc_ids + closest_doc_ids
+            doc_ids_to_exclude = target_doc_ids + similar_doc_ids
             random_doc_ids = self.ger_random_doc_ids(
-                num_doc_ids - len(closest_doc_ids),
+                num_doc_ids - len(similar_doc_ids),
                 exclude_doc_ids=doc_ids_to_exclude)
             # Add the random doc ids to the closest doc ids list
-            closest_doc_ids.extend(random_doc_ids)
-            closest_doc_ids = closest_doc_ids[:num_doc_ids]
+            similar_doc_ids.extend(random_doc_ids)
+            similar_doc_ids = similar_doc_ids[:num_doc_ids]
         else:
             # Keep only the required number of doc ids
-            closest_doc_ids = closest_doc_ids[:num_doc_ids]
+            similar_doc_ids = similar_doc_ids[:num_doc_ids]
         # Return the list of closest doc ids
-        return closest_doc_ids
+        return similar_doc_ids
