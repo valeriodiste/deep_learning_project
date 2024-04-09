@@ -397,13 +397,10 @@ class DSITransformer(pl.LightningModule):
         # Create the masks for the input and target sequences
         input_mask = torch.zeros(
             (input_length, input_length), device=self.device).type(torch.bool)
-        # target_mask = self.generate_square_subsequent_mask(
-        #     target_length).type(torch.bool).to(self.device)
         target_mask = nn.Transformer.generate_square_subsequent_mask(
             target_length, device=self.device, dtype=torch.bool)
-        # input == 0 is for padding_idx
+        # Create the padding masks for the input and target sequences
         input_padding_mask = (input == 0).transpose(0, 1).type(torch.bool)
-        # target == self.padding_idx is for padding_idx
         target_padding_mask = (target == self.doc_id_padding_token).transpose(
             0, 1).type(torch.bool)
         # Get the embeddings for the input and target sequences
@@ -430,29 +427,26 @@ class DSITransformer(pl.LightningModule):
         # Transpose the input and target sequences to match the Transformer's expected input format
         input = input.transpose(0, 1)
         target = target.transpose(0, 1)
-        # Ground truth target (excluding the last token, i.e. the end token)
-        # target_in_true = target[:-1, :]
-        # Compute the true output of the model (excluding the first token, i.e. the start token)
-        # output_true = self(input, target_in_true)
         # Initialize the output tensor
         output = torch.zeros(target.size(0) - 1, input.size(1),
                              self.target_tokens, device=input.device)
         # Start with the first token (start token)
         target_in = target[:1, :]
+        # Flag indicating if the model should use teacher forcing for all of the next tokens
+        using_teacher_forcing = True
         # Iterate over the target sequence to generate the output sequence
         for i in range(1, target.size(0)):
             # Store the next token
             next_token = None
             # Check wheter to use teacher forcing for the next token or use the model's own prediction (autoregressive approach)
             use_teacher_forcing = \
-                (self.transformer_type == DSITransformer.TRANSFORMER_TYPES.SCHEDULED_SAMPLING_TRANSFORMER and
-                    random.random() < self.scheduled_sampling_probability) or \
-                (self.transformer_type ==
-                 DSITransformer.TRANSFORMER_TYPES.TEACHER_FORCINIG_TRANSFORMER)
+                using_teacher_forcing and \
+                ((self.transformer_type == DSITransformer.TRANSFORMER_TYPES.SCHEDULED_SAMPLING_TRANSFORMER and
+                    random.random() < self.scheduled_sampling_probability) or
+                 (self.transformer_type ==
+                 DSITransformer.TRANSFORMER_TYPES.TEACHER_FORCINIG_TRANSFORMER))
             # Use scheduled sampling to avoid exposure bias
             if not force_autoregression and use_teacher_forcing:
-                # Use the ground truth token for the next prediction
-                # ground_truth_token = output_true[i-1:i, :, :]
                 # Get the ground truth output starting from the input and the actual target sequence (teacher forcing approach)
                 ground_truth_output = self(input, target[:i, :])
                 # Get the ground truth token for the current position "i" in the target sequence
@@ -470,6 +464,8 @@ class DSITransformer(pl.LightningModule):
                 output[i - 1] = last_token_output.squeeze(0)
                 # Use the last generated best token as the next token of the target_in sequence
                 next_token = torch.argmax(last_token_output, dim=-1)
+                # Set the flag to stop using teacher forcing for all the next tokens
+                using_teacher_forcing = False
             # Append the next token to the target_in sequence
             target_in = torch.cat((target_in, next_token), dim=0)
         # Get the target output (excluding the first token, i.e. the start token)
