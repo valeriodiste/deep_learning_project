@@ -84,9 +84,11 @@ def print_model_evaluation_results(map_k_evaluation_results=None, recall_k_evalu
             additional_info = " (" + ", ".join(
                 [f"{key}: {value}" for key, value in recall_k_evaluation_results["info"].items()]) + ")"
         print(
-            f"Recall@{recall_k_evaluation_results['k_documents']} for the {recall_k_evaluation_results['model']} model{additional_info}:")
-        print(f"  > {recall_k_evaluation_results['recall_at_k']}")
-        print(
-            f"  Computed for query {recall_k_evaluation_results['query_id']}")
+            f"Recall@{recall_k_evaluation_results['k_documents']} results for the {recall_k_evaluation_results['model']} model{additional_info}:")
+        for i in range(len(recall_k_evaluation_results['recall_at_k_results'])):
+            print(
+                f"  > {recall_k_evaluation_results['recall_at_k_results'][i]}")
+            print(
+                f"    Computed for query {recall_k_evaluation_results['query_ids'][i]}")
     else:
         print(f"No Recall@K evaluation results for the model")
