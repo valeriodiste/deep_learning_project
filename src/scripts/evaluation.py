@@ -390,7 +390,8 @@ def compute_recall_at_k(model_type, queries_dict, docs_dict, query_ids=None, k_d
                 [1 for doc_id in top_k_documents if doc_id in relevant_docs])
 
             # Compute the recall at k for the query
-            results["recall_at_k"].append(relevant_count / len(relevant_docs))
+            results["recall_at_k_results"].append(
+                relevant_count / len(relevant_docs))
 
     elif model_type == MODEL_TYPES.SIAMESE_NETWORK:
 
