@@ -365,14 +365,14 @@ def compute_recall_at_k(model_type, queries_dict, docs_dict, query_ids=None, k_d
         for query_id in query_ids:
 
             # Get the relevant documents for the query
-            relevant_docs = queries_dict[query_ids]["relevant_docs"]
+            relevant_docs = queries_dict[query_id]["relevant_docs"]
 
             # Compute the relevance scores for the documents using the embeddings of the queries and documents
             docs_relevance = []
             for doc_id in tqdm(encoded_doc_ids, "Computing relevance scores for Recall@K..."):
                 # Compute the cosine similarity between the query and document embeddings
                 relevance_score = functional.cosine_similarity(
-                    torch.tensor(queries_dict[query_ids]
+                    torch.tensor(queries_dict[query_id]
                                  ["embedding"], dtype=torch.float32),
                     torch.tensor(docs_dict[doc_id]
                                  ["embedding"], dtype=torch.float32),
