@@ -4,7 +4,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
 # Random seed for reproducibility
-RANDOM_SEED = 14
+RANDOM_SEED = 1
 
 
 class MODEL_TYPES:
